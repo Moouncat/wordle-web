@@ -29,6 +29,11 @@ export default defineConfig({
             src: 'public/wordle512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: 'public/wordle144x144.png',
+            sizes: '144x144',
+            type: 'image/png'
           }
         ],
         screenshots: [
