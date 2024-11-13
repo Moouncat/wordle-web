@@ -21,31 +21,31 @@ export default defineConfig({
         theme_color: '#1666BA',
         icons: [
           {
-            src: 'public/wordle192x192.png',
+            src: 'wordle192x192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'public/wordle512x512.png',
+            src: 'wordle512x512.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'public/wordle144x144.png',
+            src: 'wordle144x144.png',
             sizes: '144x144',
             type: 'image/png'
           }
         ],
         screenshots: [
           {
-            src: "public/screenshot-desktop.png",
+            src: "screenshot-desktop.png",
             sizes: "1920x1080",
             type: "image/png",
             form_factor: "wide",
             label: "Home screen showing wordle game"
           },
           {
-            src: "public/screenshot-mobile.png",
+            src: "screenshot-mobile.png",
             sizes: "1080x1920",
             type: "image/png",
             label: "Home screen showing wordle game with title"
