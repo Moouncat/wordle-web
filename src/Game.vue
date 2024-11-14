@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { onUnmounted, ref, computed } from 'vue'
-import { getWordOfTheDay, allWords } from './words'
+import { getWord, allWords } from './words'
 import Keyboard from './Keyboard.vue'
 import { LetterState } from './types'
 
 // Get word of the day
-const answer = getWordOfTheDay()
-console.log(answer)
+const answer = getWord()
 
 // Board state. Each tile is represented as { letter, state }
 const board = ref(
