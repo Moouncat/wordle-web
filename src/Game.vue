@@ -6,6 +6,7 @@ import { LetterState } from './types'
 
 // Get word of the day
 const answer = getWordOfTheDay()
+console.log(answer)
 
 // Board state. Each tile is represented as { letter, state }
 const board = ref(
@@ -58,11 +59,6 @@ function fillTile(letter: string) {
   for (const tile of currentRow.value) {
     if (!tile.letter) {
       tile.letter = letter
-      // After filling, find the next empty tile and set it as active
-      const nextEmptyTile = currentRow.value.find(t => !t.letter)
-      if (nextEmptyTile) {
-        nextEmptyTile.state = LetterState.ACTIVE
-      }
       break
     }
   }
@@ -166,7 +162,6 @@ const icons = {
   [LetterState.PRESENT]: '🟨',
   [LetterState.ABSENT]: '⬜',
   [LetterState.INITIAL]: null,
-  [LetterState.ACTIVE]: '🔲'
 }
 
 function genResultGrid() {
@@ -197,8 +192,7 @@ div#board
       ]`)
     div(v-for="(tile, index) in row"
         :class="['tile', tile.letter && 'filled', tile.state && 'revealed']")
-      div.front(:style="{ transitionDelay: `${index * 300}ms` }",
-        :class="[tile.state === LetterState.ACTIVE ? 'active-tile' : 'tile']")
+      div.front(:style="{ transitionDelay: `${index * 300}ms` }")
         | {{ tile.letter }}
       div(:class="['back', tile.state]"
           :style="{ transitionDelay: `${index * 300}ms`, animationDelay: `${index * 100}ms` }")
@@ -361,7 +355,4 @@ Keyboard(@key="onKey" :letter-states="letterStates")
   }
 }
 
-.active-tile {
-  border: 2px solid #FFD60A;
-}
 </style>
