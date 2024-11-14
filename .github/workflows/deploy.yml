@@ -14,13 +14,11 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '14' 
+    - name: Set up bun
+      uses: oven-sh/setup-bun@v2
 
     - name: Install dependencies
-      run: npm install
+      run: bun install
 
     - name: Run deploy script
-      run: npm run deploy
+      run: bun run deploy
