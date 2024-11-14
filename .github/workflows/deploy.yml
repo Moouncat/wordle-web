@@ -1,0 +1,26 @@
+name: Deploy to pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14' 
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run deploy script
+      run: npm run deploy
