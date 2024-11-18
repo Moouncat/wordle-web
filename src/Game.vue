@@ -18,8 +18,9 @@ const board = ref(
   )
 )
 
-// Current active row
+// Current active row and tile
 let currentRowIndex = ref(0)
+let currentTileIndex = ref(0) // New variable to keep track of the active tile
 const currentRow = computed(() => board.value[currentRowIndex.value])
 
 // Feedback state: message and shake
@@ -54,20 +55,28 @@ function onKey(key: string) {
 }
 
 function fillTile(letter: string) {
-  // Find the next empty tile in the current row
-  for (const tile of currentRow.value) {
-    if (!tile.letter) {
-      tile.letter = letter
-      break
+  const activeTile = currentRow.value[currentTileIndex.value]
+  if (activeTile && !activeTile.letter) {
+    activeTile.letter = letter
+
+    if (currentTileIndex.value < currentRow.value.length - 1) {
+      currentTileIndex.value++
     }
   }
 }
 
 function clearTile() {
-  for (const tile of [...currentRow.value].reverse()) {
-    if (tile.letter) {
-      tile.letter = ''
-      break
+  const activeTile = currentRow.value[currentTileIndex.value]
+
+  if (activeTile && activeTile.letter) {
+    activeTile.letter = ''
+  } else {
+    if (currentTileIndex.value > 0) {
+      const previousTile = currentRow.value[currentTileIndex.value - 1]
+      if (previousTile && previousTile.letter) {
+        previousTile.letter = ''
+      }
+      currentTileIndex.value--
     }
   }
 }
@@ -115,7 +124,7 @@ function completeRow() {
       setTimeout(() => {
         grid.value = genResultGrid()
         showMessage(
-          ['Brilliant', 'Wunderbar', 'Erstaunlich', 'Großartig', 'Super', 'Puh...'][
+          ['Unglaublich!', 'Genial', 'Großartig', 'Super', 'Gut', 'Puh...'][
             currentRowIndex.value
           ],
           -1
@@ -125,6 +134,7 @@ function completeRow() {
     } else if (currentRowIndex.value < board.value.length - 1) {
       // go to the next row
       currentRowIndex.value++
+      currentTileIndex.value = 0 // Reset active tile to the first tile of the next row
       setTimeout(() => {
         allowInput.value = true
       }, 1600)
@@ -172,32 +182,42 @@ function genResultGrid() {
     .join('\n')
 }
 
+function onTileClick(index: number) {
+  if (currentRowIndex.value === Math.floor(index / 5)) {
+    currentTileIndex.value = index % 5;
+  }
+}
+
+function isActiveTile(rowIndex: number, colIndex: number) {
+  return currentRowIndex.value === rowIndex && currentTileIndex.value === colIndex ? 'active' : '';
+}
 </script>
 
-
 <template lang="pug">
-Transition
-  div.message(v-if="message")
-    | {{ message }}
-    pre(v-if="grid") {{ grid }}
-header
-  h1 WORDLE
-div#board
-  div(v-for="(row, index) in board"
-      :class=`[
-        'row',
-        shakeRowIndex === index && 'shake',
-        success && currentRowIndex === index && 'jump'
-      ]`)
-    div(v-for="(tile, index) in row"
-        :class="['tile', tile.letter && 'filled', tile.state && 'revealed']")
-      div.front(:style="{ transitionDelay: `${index * 300}ms` }")
-        | {{ tile.letter }}
-      div(:class="['back', tile.state]"
-          :style="{ transitionDelay: `${index * 300}ms`, animationDelay: `${index * 100}ms` }")
-        | {{ tile.letter }}
-Keyboard(@key="onKey" :letter-states="letterStates")
-</template>
+  Transition
+    div.message(v-if="message")
+      | {{ message }}
+      pre(v-if="grid") {{ grid }}
+  header
+    h1 WORDLE
+  div#board
+    div(v-for="(row, rowIndex) in board"
+        :class=`[
+          'row',
+          shakeRowIndex === rowIndex && 'shake',
+          success && currentRowIndex === rowIndex && 'jump'
+        ]`)
+      div(v-for="(tile, colIndex) in row"
+          :class="['tile', tile.letter && 'filled', tile.state && 'revealed', isActiveTile(rowIndex, colIndex)]"
+          @click="onTileClick(rowIndex * 5 + colIndex)"
+        )
+        div.front(:style="{ transitionDelay: `${colIndex * 300}ms` }")
+          | {{ tile.letter }}
+        div(:class="['back', tile.state]"
+            :style="{ transitionDelay: `${colIndex * 300}ms`, animationDelay: `${colIndex * 100}ms` }")
+          | {{ tile.letter }}
+  Keyboard(@key="onKey" :letter-states="letterStates")
+  </template>
 
 <style scoped>
 #board {
@@ -276,6 +296,9 @@ Keyboard(@key="onKey" :letter-states="letterStates")
 .tile.revealed .back {
   transform: rotateX(0deg);
 }
+.tile.active {
+  background-color: #001c42;
+}
 
 @keyframes zoom {
   0% {
@@ -353,5 +376,4 @@ Keyboard(@key="onKey" :letter-states="letterStates")
     font-size: 3vh;
   }
 }
-
 </style>
