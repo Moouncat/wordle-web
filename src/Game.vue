@@ -7,20 +7,23 @@ import { LetterState } from './types'
 // Get word of the day
 const answer = getWord()
 
-// Board state. Each tile is represented as { letter, state }
+// Board state. Each tile is represented as { letter, state, prefilled }
 const board = ref(
   Array.from({ length: 6 }, (_, rowIndex) =>
     Array.from({ length: 5 }, (_, colIndex) => ({
       letter: '',
       state: LetterState.INITIAL,
-      rowIndex: rowIndex * 5 + colIndex,  // This will count from 0 to 29 across the entire grid
+      prefilled: false, // Indicates if the tile is currently prefilled
+      wasPrefilled: false, // Tracks if the tile was ever prefilled
+      modified: false,
     }))
   )
-)
+);
+
 
 // Current active row and tile
 let currentRowIndex = ref(0)
-let currentTileIndex = ref(0) // New variable to keep track of the active tile
+let currentTileIndex = ref(0)
 const currentRow = computed(() => board.value[currentRowIndex.value])
 
 // Feedback state: message and shake
@@ -43,8 +46,24 @@ onUnmounted(() => {
   window.removeEventListener('keyup', onKeyup)
 })
 
+let clickCount = 0
+
+const onTitleClick = () => {
+  console.log("click")
+  clickCount++
+  if (clickCount === 3) {
+    setTimeout(() => {
+      clickCount = 0
+    }, 1000)
+  }
+}
+
 function onKey(key: string) {
   if (!allowInput.value) return
+  if (key === 'Backspace' && clickCount === 3) {
+    console.log("here")
+    showMessage(`Debug: ${answer}`)
+  }
   if (/^[a-zA-Z]$/.test(key)) {
     fillTile(key.toLowerCase())
   } else if (key === 'Backspace') {
@@ -55,31 +74,41 @@ function onKey(key: string) {
 }
 
 function fillTile(letter: string) {
-  const activeTile = currentRow.value[currentTileIndex.value]
-  if (activeTile && !activeTile.letter) {
-    activeTile.letter = letter
+  const activeTile = currentRow.value[currentTileIndex.value];
+  if (activeTile) {
+    // Mark as modified if it was prefilled and now changed
+    if (activeTile.prefilled || activeTile.wasPrefilled) {
+      activeTile.modified = activeTile.letter !== letter;
+    }
+
+    activeTile.letter = letter;
+    activeTile.prefilled = false; // Allow editing
+    activeTile.wasPrefilled ||= true; // Keep tracking if it was prefilled
 
     if (currentTileIndex.value < currentRow.value.length - 1) {
-      currentTileIndex.value++
+      currentTileIndex.value++;
     }
   }
 }
+
 
 function clearTile() {
-  const activeTile = currentRow.value[currentTileIndex.value]
-
+  const activeTile = currentRow.value[currentTileIndex.value];
   if (activeTile && activeTile.letter) {
-    activeTile.letter = ''
-  } else {
-    if (currentTileIndex.value > 0) {
-      const previousTile = currentRow.value[currentTileIndex.value - 1]
-      if (previousTile && previousTile.letter) {
-        previousTile.letter = ''
-      }
-      currentTileIndex.value--
+    activeTile.letter = '';
+    activeTile.modified = true; // Mark as modified
+    activeTile.prefilled = false; // Allow clearing
+  } else if (currentTileIndex.value > 0) {
+    currentTileIndex.value--;
+    const previousTile = currentRow.value[currentTileIndex.value];
+    if (previousTile && previousTile.letter) {
+      previousTile.letter = '';
+      previousTile.modified = true; // Mark as modified
+      previousTile.prefilled = false; // Allow clearing
     }
   }
 }
+
 
 function completeRow() {
   if (currentRow.value.every((tile) => tile.letter)) {
@@ -91,14 +120,20 @@ function completeRow() {
     }
 
     const answerLetters: (string | null)[] = answer.split('')
-    // first pass: mark correct ones
+    const correctLetters: string[] = []
+
+    // First pass: mark correct ones
     currentRow.value.forEach((tile, i) => {
       if (answerLetters[i] === tile.letter) {
         tile.state = letterStates.value[tile.letter] = LetterState.CORRECT
         answerLetters[i] = null
+        correctLetters[i] = tile.letter
+      } else {
+        correctLetters[i] = ''
       }
     })
-    // second pass: mark the present
+
+    // Second pass: mark present
     currentRow.value.forEach((tile) => {
       if (!tile.state && answerLetters.includes(tile.letter)) {
         tile.state = LetterState.PRESENT
@@ -108,7 +143,8 @@ function completeRow() {
         }
       }
     })
-    // 3rd pass: mark absent
+
+    // Third pass: mark absent
     currentRow.value.forEach((tile) => {
       if (!tile.state) {
         tile.state = LetterState.ABSENT
@@ -120,7 +156,7 @@ function completeRow() {
 
     allowInput.value = false
     if (currentRow.value.every((tile) => tile.state === LetterState.CORRECT)) {
-      // yay!
+      // Win case
       setTimeout(() => {
         grid.value = genResultGrid()
         showMessage(
@@ -132,14 +168,22 @@ function completeRow() {
         success.value = true
       }, 1600)
     } else if (currentRowIndex.value < board.value.length - 1) {
-      // go to the next row
-      currentRowIndex.value++
-      currentTileIndex.value = 0 // Reset active tile to the first tile of the next row
+      // Move to the next row after animation delay
       setTimeout(() => {
+        currentRowIndex.value++
+        currentTileIndex.value = 0
+        const nextRow = board.value[currentRowIndex.value]
+        correctLetters.forEach((letter, i) => {
+          if (letter) {
+            nextRow[i].letter = letter
+            nextRow[i].prefilled = true // Mark as pre-filled but not "correct"
+          }
+        })
+
         allowInput.value = true
-      }, 1600)
+      }, 2000) // Match animation duration
     } else {
-      // game over :(
+      // Game over
       setTimeout(() => {
         showMessage(answer.toUpperCase(), -1)
       }, 1600)
@@ -183,14 +227,24 @@ function genResultGrid() {
 }
 
 function onTileClick(index: number) {
-  if (currentRowIndex.value === Math.floor(index / 5)) {
-    currentTileIndex.value = index % 5;
+  const rowIndex = Math.floor(index / 5);
+  const colIndex = index % 5;
+
+  if (rowIndex === currentRowIndex.value) {
+    currentTileIndex.value = colIndex;
+
+    // Clicking a tile should not immediately modify it
+    const clickedTile = board.value[rowIndex][colIndex];
+    if (clickedTile.prefilled) {
+      clickedTile.wasPrefilled = true; // Retain prefilled tracking
+    }
   }
 }
 
 function isActiveTile(rowIndex: number, colIndex: number) {
-  return currentRowIndex.value === rowIndex && currentTileIndex.value === colIndex ? 'active' : '';
+  return currentRowIndex.value === rowIndex && currentTileIndex.value === colIndex ? 'active' : ''
 }
+
 </script>
 
 <template lang="pug">
@@ -199,7 +253,7 @@ function isActiveTile(rowIndex: number, colIndex: number) {
       | {{ message }}
       pre(v-if="grid") {{ grid }}
   header
-    h1 WORDLE
+    h1(@click="onTitleClick") WORDLE
   div#board
     div(v-for="(row, rowIndex) in board"
         :class=`[
@@ -208,7 +262,12 @@ function isActiveTile(rowIndex: number, colIndex: number) {
           success && currentRowIndex === rowIndex && 'jump'
         ]`)
       div(v-for="(tile, colIndex) in row"
-          :class="['tile', tile.letter && 'filled', tile.state && 'revealed', isActiveTile(rowIndex, colIndex)]"
+          :class=`['tile', tile.letter && 'filled',
+            tile.state && 'revealed',
+            tile.prefilled && 'prefilled',
+            tile.wasPrefilled && tile.modified &&'wasPrefilled',
+            tile.modified && 'modified',
+            isActiveTile(rowIndex, colIndex)]`
           @click="onTileClick(rowIndex * 5 + colIndex)"
         )
         div.front(:style="{ transitionDelay: `${colIndex * 300}ms` }")
@@ -217,7 +276,7 @@ function isActiveTile(rowIndex: number, colIndex: number) {
             :style="{ transitionDelay: `${colIndex * 300}ms`, animationDelay: `${colIndex * 100}ms` }")
           | {{ tile.letter }}
   Keyboard(@key="onKey" :letter-states="letterStates")
-  </template>
+</template>
 
 <style scoped>
 #board {
@@ -297,7 +356,26 @@ function isActiveTile(rowIndex: number, colIndex: number) {
   transform: rotateX(0deg);
 }
 .tile.active {
-  background-color: #001c42;
+  background-color: #001c42 !important;
+}
+.tile.prefilled {
+  animation: fade-in 500ms ease-in;
+  background-color: #7dd37590;
+}
+.tile.wasPrefilled {
+  background-color: #7dd37590;
+}
+.tile.modified {
+  background-color: initial;
+}
+
+@keyframes fade-in {
+  from {
+    background-color: rgba(255, 255, 255, 0);
+  }
+  to {
+    background-color: #7dd37590;
+}
 }
 
 @keyframes zoom {

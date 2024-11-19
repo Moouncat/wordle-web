@@ -67,7 +67,7 @@ button {
   text-transform: uppercase;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0.3);
   transition: all 0.2s 1.5s;
-  font-size: 16px;
+  font-size: 1.5rem;
 }
 button:last-of-type {
   margin: 0;

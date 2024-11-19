@@ -1,5 +1,5 @@
 body {
-  font-family: 'Montserrat Regular';
+  font-family: 'Rubik';
   text-align: center;
   max-width: 500px;
   margin: 0px auto;
@@ -10,6 +10,7 @@ h1 {
   margin: 8px 0;
   font-size: 36px;
   color: #fff;
+  user-select: none;
 }
 
 header {
